@@ -38,7 +38,7 @@ typedef uint8_t byte;
 
 class DecodeOOK {
 protected:
-    byte total_bits, bits, flip, state, pos, data[OOK_MAX_DATA_LEN];
+    byte total_bits, bits, flip, state, pos, data[OOK_MAX_DATA_LEN], last ;
 
     virtual int decode (word width) =0;
 
@@ -85,6 +85,14 @@ public:
     void gotBit (char value);
     int decode (word width);
 };
+
+class MaverickDecoder : public DecodeOOK {
+public:
+    MaverickDecoder();
+//    void gotBit (char value);
+    int decode (word width);
+};
+
 
 class CrestaDecoder : public DecodeOOK {
 public:

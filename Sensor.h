@@ -25,91 +25,108 @@
 #define SENS_TYP_OS_2D10 0x2D10 // STR928N
 #define SENS_TYP_OS_5D60 0x5D60 // BTHG968
 
-class Sensor {
+class Sensor
+{
 
 protected:
-double temperature;
-double humidity;
-double rain;
-double train;
-double direction;
-double speed;
-double pressure;
+    double temperature;
+    double temperature2;
+    double humidity;
+    double rain;
+    double train;
+    double direction;
+    double speed;
+    double pressure;
 
-int channel;
-bool battery; // true if flag set (battery low)
+    int channel;
+    bool battery; // true if flag set (battery low)
 
-bool haveTemperature; // true when temp capaciy decoded
-bool haveHumidity; // true when hum capcity decoded
-bool haveBattery; // true when battery flag decoded
-bool haveChannel; // true when channel is present
-bool isValid; // true when chaecksum is valid and other value valid
-bool haveDirection; // true when wind direction decodedd
-bool haveSpeed; // true when wind wpeed decoded
-bool haveRain; // true when rain decoded
-bool haveTrain;
-bool havePressure; // true when pressure decoded
+    bool haveTemperature; // true when temp capaciy decoded
+    bool haveTemperature2; // true when temp capaciy decoded
+    bool haveHumidity; // true when hum capcity decoded
+    bool haveBattery; // true when battery flag decoded
+    bool haveChannel; // true when channel is present
+    bool isValid; // true when chaecksum is valid and other value valid
+    bool haveDirection; // true when wind direction decodedd
+    bool haveSpeed; // true when wind wpeed decoded
+    bool haveRain; // true when rain decoded
+    bool haveTrain;
+    bool havePressure; // true when pressure decoded
 
-int sensorClass; // marque du sensor cf #define
-int sensorType; // model of sensor
-char sensorName[16];
+    int sensorClass; // marque du sensor cf #define
+    int sensorType; // model of sensor
+    char sensorName[16];
 
 // time_t creationTime; // objectCreation time
 
-static char _hexDecod[];
-virtual bool decode ( char * _str) = 0; // decode the string and set the variable
+    static char _hexDecod[];
+    virtual bool decode ( char * _str) = 0; // decode the string and set the variable
 
 protected:
-int getIntFromChar(char c); // transform a Hex value in char into a number
-int getIntFromString(char *); // transform a Hex value in String into a number
-double getDoubleFromString(char *); // transform a BCD string into a double
+    int getIntFromChar(char c); // transform a Hex value in char into a number
+    int getIntFromString(char *); // transform a Hex value in String into a number
+    double getDoubleFromString(char *); // transform a BCD string into a double
 
 public:
 
-Sensor(char * _strval); // construct and decode value
+    Sensor(char * _strval); // construct and decode value
 
-bool availableTemp(); // return true if valid && have Temp
-bool availableHumidity(); // return true if valid && have Humidity
-bool isBatteryLow(); // return true if valid && haveBattery && flag set.
-bool hasChannel(); // return true if valid && haveChannel
-bool isDecoded(); // return true if valide
-bool availableSpeed(); // return true if valid && speed in km/h
-bool availableDirection(); // return true if valid && wind direction
-bool availableRain(); // return true if valid && rain in mm/h
-bool availablePressure(); // return true if valid && pressure in mb
+    bool availableTemp(); // return true if valid && have Temp
+    bool availableHumidity(); // return true if valid && have Humidity
+    bool isBatteryLow(); // return true if valid && haveBattery && flag set.
+    bool hasChannel(); // return true if valid && haveChannel
+    bool isDecoded(); // return true if valide
+    bool availableSpeed(); // return true if valid && speed in km/h
+    bool availableDirection(); // return true if valid && wind direction
+    bool availableRain(); // return true if valid && rain in mm/h
+    bool availablePressure(); // return true if valid && pressure in mb
 
-double getTemperature(); // return temperature in CÂ°
-double getHumidity(); // return humidity in % (base 100)
-char * getSensorName(); // return sensor name
-double getRain(); // return Rain
-double getTrain();
-double getDirection(); // return wind direction
-double getSpeed(); // return speed in km/h
-double getPressure(); // return pressure in mb
+    double getTemperature(); // return temperature in CÂ°
+    double getTemperature2(); // return temperature in CÂ°
+    double getHumidity(); // return humidity in % (base 100)
+    char * getSensorName(); // return sensor name
+    double getRain(); // return Rain
+    double getTrain();
+    double getDirection(); // return wind direction
+    double getSpeed(); // return speed in km/h
+    double getPressure(); // return pressure in mb
 
-int getChannel(); // return channel value
-int getSensClass(); // return sensor class
-int getSensType(); // return sensor type
+    int getChannel(); // return channel value
+    int getSensClass(); // return sensor class
+    int getSensType(); // return sensor type
 
 //time_t getCreationTime(); // return object creation time
 
-static Sensor * getRightSensor(char * s); // wrapper for child class
+    static Sensor * getRightSensor(char * s); // wrapper for child class
 
 };
 
-class OregonSensorV2 : public Sensor {
+class OregonSensorV2 : public Sensor
+{
 public :
-OregonSensorV2(char * _strval);
+    OregonSensorV2(char * _strval);
 
 private:
-bool decode( char * _str ); // wrapper to right decode method
+    bool decode( char * _str ); // wrapper to right decode method
 
-bool decode_BTHG968(char *pt); // decode sensor information
-bool decode_RGR918(char *pt); // decode sensor information
-bool decode_THGR122NX(char * pt); // decode sensor informations
-bool decode_THN132N(char * pt); // decode sensor informations
-bool decode_THGRN228NX(char * pt); // decode sensor informations
-bool decode_WGR918(char * pt); // decode sensor informations
-bool validate(char * _str, int _len, int _CRC, int _SUM); // Verify CRC & CKSUM
+    bool decode_BTHG968(char *pt); // decode sensor information
+    bool decode_RGR918(char *pt); // decode sensor information
+    bool decode_THGR122NX(char * pt); // decode sensor informations
+    bool decode_THN132N(char * pt); // decode sensor informations
+    bool decode_THGRN228NX(char * pt); // decode sensor informations
+    bool decode_WGR918(char * pt); // decode sensor informations
+    bool validate(char * _str, int _len, int _CRC, int _SUM); // Verify CRC & CKSUM
 };
+
+class MaverickSensor : public Sensor
+{
+public :
+    MaverickSensor(char * _strval);
+
+private:
+    bool decode( char * _str ); // wrapper to right decode method
+    unsigned int quart(unsigned int param);
+//    bool validate(char * _str, int _len, int _CRC, int _SUM); // Verify CRC & CKSUM
+};
+
 #endif /* SENSOR_H_ */
