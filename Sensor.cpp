@@ -14,11 +14,12 @@ Sensor.cpp
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <time.h>
 #include "Sensor.h"
 
-//#define SENSORDEBUG // Large debug trace
-//#define SENSORTRACE // Small debug trace to verify error only
+// #define SENSORDEBUG // Large debug trace
+// #define SENSORTRACE // Small debug trace to verify error only
 
 char Sensor::_hexDecod[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
@@ -35,6 +36,7 @@ Sensor::Sensor( char * _strval )
     this->speed = 0;
     this->battery = false;
     this->haveTemperature = false;
+    this->haveTemperature2 = false;
     this->haveHumidity = false;
     this->haveBattery = false;
     this->isValid = false;
@@ -86,6 +88,12 @@ bool Sensor::availableRain()
 bool Sensor::availableTemp()
 {
     return (this->isValid && this->haveTemperature);
+}
+// —————————————————
+// availableTemp() – return true if valid && have Temp
+bool Sensor::availableTemp2()
+{
+    return (this->isValid && this->haveTemperature2);
 }
 // —————————————————
 // availableHumidity() – return true if valid && have Humidity
@@ -272,7 +280,6 @@ Sensor * Sensor::getRightSensor(char * s)
             return (Sensor *) r;
         }
         if ( !strncmp(s, "MAV AA9995", 10) )
-//        if (s[0] == 'M' && s[1] == 'A' && s[2] == 'V')
         {
             MaverickSensor * r = new MaverickSensor(s);
             return (Sensor *) r;
@@ -292,22 +299,54 @@ MaverickSensor::MaverickSensor(char * _strval) : Sensor(_strval)
 bool MaverickSensor::decode(char * _str)
 {
     int i;
-    unsigned int probe1=0, probe2=0;
+    uint32_t probe1=0, probe2=0;
+    uint32_t check_data;
+    uint16_t chksum_data, chksum_sent, chk_xor, chk_xor_expected=0;
+
     for(i=0; i<=4; i++)
     {
-       probe1 += quart(_str[12-i]) * (1<<(2*i));
-       probe2 += quart(_str[17-i]) * (1<<(2*i));
+        probe1 += quart(_str[12-i]) * (1<<(2*i));
+        probe2 += quart(_str[17-i]) * (1<<(2*i));
     }
+//     printf("%x %x ",probe1,probe2);
+    check_data = quart(_str[6]) << 22;
+//     printf("%x ", check_data);
+    check_data |= quart(_str[7]) << 20;
+//     printf("%x ", check_data);
+    check_data |= (uint32_t) probe1 << 10;
+//     printf("%x ", check_data);
+    check_data |= (uint32_t) probe2;
+//     printf("%x ", check_data);
+    chksum_data = calculate_checksum(check_data);
+
+
+
+    chksum_sent = (uint16_t) quart(_str[18] ) << 14;
+    chksum_sent |= (uint16_t) quart(_str[19]) << 12;
+    chksum_sent |= (uint16_t) quart(_str[20]) << 10;
+    chksum_sent |= (uint16_t) quart(_str[21]) << 8;
+    chksum_sent |= (uint16_t) quart(_str[22]) << 6;
+    chksum_sent |= (uint16_t) quart(_str[23]) << 4;
+
+//    chksum_sent |= (uint16_t) quart(_str[24]) << 2;
+//    chksum_sent |= (uint16_t) quart(_str[25]) ;
+//chksum_sent+=quart(_str[24]);
+//chksum_sent+=_str[24]-'0';
+
+    chk_xor = chksum_data ^ chksum_sent;
+    printf(" chk_xor: %x (%x %x)\n",chk_xor,chksum_data, chksum_sent);
+
     probe1-=532;
     probe2-=532;
     this->haveTemperature = true;
     this->temperature = probe1;
     this->haveTemperature2 = true;
     this->temperature2 = probe2;
+    return true;
 }
 
 // make the quarternary convertion
-unsigned int MaverickSensor::quart(unsigned int param)
+char MaverickSensor::quart(unsigned int param)
 {
 //     param &= 0x0F;
     if (param=='5')
@@ -319,9 +358,51 @@ unsigned int MaverickSensor::quart(unsigned int param)
     if (param=='A')
         return(3);
 
+    if (param=='1')
+        return(1);
+    if (param=='2')
+        return(2);
+
     return (0);	// just to keep the compilers mouth shut because of a warning
 }
 
+uint16_t MaverickSensor::shiftreg(uint16_t currentValue)
+{
+    uint8_t msb = (currentValue >> 15) & 1;
+    currentValue <<= 1;
+    if (msb == 1)
+    {
+// Toggle pattern for feedback bits
+// Toggle, if MSB is 1
+        currentValue ^= 0x1021;
+    }
+    return currentValue;
+}
+//data = binary representation of nibbles 6 - 17
+//e.g. xxxx:xxxx:xxxx:0010:1000:1010:0110:0101:0101:xxxx:xxxx:xxxx:xxxx
+// -> uint32_t data = 0x28a655
+uint16_t MaverickSensor::calculate_checksum(uint32_t data)
+{
+    uint16_t mask = 0x3331; //initial value of linear feedback shift register
+    uint16_t csum = 0x0;
+    int i = 0;
+    for(i = 23; i >= 0; i--)
+    {
+			printf("%x",(data >> i) & 0x01);
+		}
+
+    for(i = 0; i < 24; ++i)
+    {
+        if((data >> i) & 0x01)
+        {
+//data bit at current position is "1"
+//do XOR with mask
+            csum ^= mask;
+        }
+        mask = shiftreg(mask);
+    }
+    return csum;
+}
 
 // ==================================================================
 
@@ -399,6 +480,20 @@ bool OregonSensorV2::decode(char * _str)
             this->sensorName[8] ='X';
             this->sensorName[9] ='\0';
             return decode_THGR122NX(pt);
+            break;
+
+        case 0xCC23:
+            this->sensorType=0xCC23;
+            this->sensorName[0] ='T';
+            this->sensorName[1] ='H';
+            this->sensorName[2] ='G';
+            this->sensorName[3] ='R';
+            this->sensorName[4] ='3';
+            this->sensorName[5] ='2';
+            this->sensorName[6] ='8';
+            this->sensorName[7] ='N';
+            this->sensorName[8] ='\0';
+            return decode_THGR328N(pt);
             break;
 
         case 0x1D30:
@@ -656,6 +751,8 @@ bool OregonSensorV2::decode_WGR918(char * pt)
     return false;
 }
 
+
+
 // —————————————————————————————
 // Decode OregonScientific V2 protocol for specific
 // Oregon Devices
@@ -730,6 +827,95 @@ bool OregonSensorV2::decode_THGRN228NX(char * pt)
 // now we can decode the important flag and fill the object
             this->haveChannel = true;
             this->channel = (ichannel != 4)?ichannel:3;
+            this->haveBattery = true;
+            this->battery = (ibattery & 0x4);
+            this->haveTemperature = true;
+            this->temperature = (itempS == 0)?dtemp:-dtemp;
+            this->haveHumidity = true;
+            this->humidity = dhumid;
+            return true;
+        }
+        else return false;
+
+    }
+    return false;
+}
+
+// —————————————————————————————
+// Decode OregonScientific V2 protocol for specific
+// Oregon Devices
+// – THGR328N : Temp + Humidity
+// ——————————————————————————————
+bool OregonSensorV2::decode_THGR328N(char * pt)
+{
+
+    char channel;
+    int ichannel; // values 1-5
+    char rolling[3];
+    int irolling;
+    char battery;
+    int ibattery; // value & 0x4
+    char temp[4];
+    double dtemp; // Temp in BCD
+    char tempS;
+    int itempS; // Sign 0 = positif
+    char humid[4];
+    double dhumid; // Humid in BCD
+    char checksum[3];
+    int ichecksum;
+    char crc[3];
+    int icrc;
+    int len = strlen(pt);
+
+    if ( len == 20 )
+    {
+        channel = pt[4];
+        rolling[0]=pt[7];
+        rolling[1]=pt[6];
+        rolling[2]='\0';
+        battery = pt[9];
+        temp[0] = pt[10] ;
+        temp[1] = pt[11] ;
+        temp[2] = pt[8] ;
+        temp[3] ='\0';
+        tempS = pt[13];
+        humid[0] = pt[15] ;
+        humid[1] = pt[12];
+        humid[2] = '0' ;
+        humid[3] ='\0';
+        checksum[0] = pt[16];
+        checksum[1] = pt[17];
+        checksum[2] ='\0';
+        crc[0] = pt[18] ;
+        crc[1] = pt[19] ;
+        crc[2] ='\0';
+
+#ifdef SENSORDEBUG
+        printf("OSV2 – decode : id(%s) ch(%c) bat(%c) temp(%s) sign(%c) humid(%s) cksum(%s) crc(%s)\n","1D30",channel,battery,temp,tempS,humid, checksum, crc);
+#endif
+
+// Conversion to int value
+        ichannel = getIntFromChar(channel);
+        irolling = getIntFromString(rolling);
+        ibattery = getIntFromChar(battery);
+        itempS = getIntFromChar(tempS) & 0x08;
+        ichecksum = getIntFromString(checksum);
+        icrc = getIntFromString(crc);
+        dtemp = getDoubleFromString(temp);
+        dhumid = getDoubleFromString(humid);
+
+#ifdef SENSORDEBUG
+        printf("OSV2 – decode : id(0x%04X) ch(%d) bat(%d) temp(%f) sign(%d) humid(%f) cksum(0x%02X) crc(0x%02X)\n",0x1D30,ichannel,ibattery,dtemp,itempS,dhumid, ichecksum, icrc);
+#endif
+
+// Check SUM & CRC
+        if ( validate(pt,16,icrc,ichecksum) == true )
+        {
+
+// now we can decode the important flag and fill the object
+            this->haveChannel = true;
+            this->channel = ichannel;
+//this->channel = (ichannel != 4)?ichannel:3;
             this->haveBattery = true;
             this->battery = (ibattery & 0x4);
             this->haveTemperature = true;

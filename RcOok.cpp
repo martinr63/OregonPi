@@ -291,9 +291,9 @@ int OregonDecoderV2::decode (word width)
         // Dans le cas du THN132N on a seulement 136b
         // donc si on depasse le timing et que l'on a 136b
         // c'est sans doute qu'il s'agit de celui-ci
-        return ( total_bits == 130 )? 1 : -1;
+        return ( total_bits == 136 )? 1 : -1;
     }
-    return total_bits == 130 ? 1: 0 ;
+    return total_bits == 160 ? 1: 0 ;
 }
 
 /* ======================================================

@@ -155,7 +155,7 @@ void RCSwitch::handleInterrupt() {
   if ( !OokAvailableCode ) {		// avoid reentrance -- wait until data is read
 	  if (mav.nextPulse(p)) 	{ RCSwitch::OokAvailableCode = true; mav.sprint("MAV ",RCSwitch::OokReceivedCode); mav.resetDecoder(); }
  	  if (orscV2.nextPulse(p)) 	{ RCSwitch::OokAvailableCode = true; orscV2.sprint("OSV2 ",RCSwitch::OokReceivedCode); orscV2.resetDecoder(); }
- 	  if (orscV3.nextPulse(p)) 	{ RCSwitch::OokAvailableCode = true; orscV3.sprint("OSV3 ",RCSwitch::OokReceivedCode); orscV3.resetDecoder(); }
+// 	  if (orscV3.nextPulse(p)) 	{ RCSwitch::OokAvailableCode = true; orscV3.sprint("OSV3 ",RCSwitch::OokReceivedCode); orscV3.resetDecoder(); }
 // 	  if (rcswp1.nextPulse(p)) 	{ RCSwitch::OokAvailableCode = true; rcswp1.sprint("ALRM ",RCSwitch::OokReceivedCode); rcswp1.resetDecoder(); }
 
 	//  if (cres.nextPulse(p)) 	{ cres.print("CRES"); cres.resetDecoder(); }

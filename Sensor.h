@@ -21,6 +21,7 @@
 #define SENS_TYP_OS_1D20 0x1D20 // THGR122NX
 #define SENS_TYP_OS_EC40 0xEC40 // THN132N
 #define SENS_TYP_OS_1D30 0x1D30 // THGRN228NX
+#define SENS_TYP_OS_CC23 0xCC23 // THGR328N
 #define SENS_TYP_OS_3D00 0x3D00 // WGR9180
 #define SENS_TYP_OS_2D10 0x2D10 // STR928N
 #define SENS_TYP_OS_5D60 0x5D60 // BTHG968
@@ -72,6 +73,7 @@ public:
     Sensor(char * _strval); // construct and decode value
 
     bool availableTemp(); // return true if valid && have Temp
+    bool availableTemp2(); // return true if valid && have Temp
     bool availableHumidity(); // return true if valid && have Humidity
     bool isBatteryLow(); // return true if valid && haveBattery && flag set.
     bool hasChannel(); // return true if valid && haveChannel
@@ -114,6 +116,7 @@ private:
     bool decode_THGR122NX(char * pt); // decode sensor informations
     bool decode_THN132N(char * pt); // decode sensor informations
     bool decode_THGRN228NX(char * pt); // decode sensor informations
+    bool decode_THGR328N(char * pt); // decode sensor informations
     bool decode_WGR918(char * pt); // decode sensor informations
     bool validate(char * _str, int _len, int _CRC, int _SUM); // Verify CRC & CKSUM
 };
@@ -125,7 +128,10 @@ public :
 
 private:
     bool decode( char * _str ); // wrapper to right decode method
-    unsigned int quart(unsigned int param);
+    char quart(unsigned int param);
+    uint16_t shiftreg(uint16_t currentValue);
+    uint16_t calculate_checksum(uint32_t data);
+
 //    bool validate(char * _str, int _len, int _CRC, int _SUM); // Verify CRC & CKSUM
 };
 
