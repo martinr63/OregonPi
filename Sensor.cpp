@@ -319,6 +319,15 @@ bool MaverickSensor::decode(char * _str)
 //     printf("%x ", check_data);
     chksum_data = calculate_checksum(check_data);
 
+//     chksum_sent = (uint16_t) _str[18]  << 14;
+//     chksum_sent |= (uint16_t) _str[19] << 12;
+//     chksum_sent |= (uint16_t) _str[20] << 10;
+//     chksum_sent |= (uint16_t) _str[21] << 8;
+//     chksum_sent |= (uint16_t) _str[22] << 6;
+//     chksum_sent |= (uint16_t) _str[23] << 4;
+//
+//     chksum_sent |= (uint16_t) _str[24] << 2;
+//     chksum_sent |= (uint16_t) _str[25] ;
 
 
     chksum_sent = (uint16_t) quart(_str[18] ) << 14;
@@ -328,12 +337,23 @@ bool MaverickSensor::decode(char * _str)
     chksum_sent |= (uint16_t) quart(_str[22]) << 6;
     chksum_sent |= (uint16_t) quart(_str[23]) << 4;
 
-//    chksum_sent |= (uint16_t) quart(_str[24]) << 2;
-//    chksum_sent |= (uint16_t) quart(_str[25]) ;
-//chksum_sent+=quart(_str[24]);
-//chksum_sent+=_str[24]-'0';
+    if(_str[24]=='1' || _str[24]=='2')
+    {
+        chksum_sent |= (uint16_t) ((quart(_str[25]))&1)<<3;
+        chksum_sent |= (uint16_t) ((quart(_str[25]))&2)<<1;
 
-    chk_xor = chksum_data ^ chksum_sent;
+        if(_str[24]=='1')
+            chksum_sent |= 0x02;
+    }
+    else
+    {
+        chksum_sent |= (uint16_t) quart(_str[24]) << 2;
+        chksum_sent |= (uint16_t) quart(_str[25]);
+    }
+// 		chksum_sent |= (uint16_t) inv_quart(_str[25])<<2;
+
+    chk_xor = (chksum_data & 0xfffe) ^ chksum_sent;
+//    printf(" chk_xor: %x (%x %x %x%x)\n",chk_xor,chksum_data, chksum_sent,_str[24]-'0',quart(_str[25]));
     printf(" chk_xor: %x (%x %x)\n",chk_xor,chksum_data, chksum_sent);
 
     probe1-=532;
@@ -358,13 +378,10 @@ char MaverickSensor::quart(unsigned int param)
     if (param=='A')
         return(3);
 
-    if (param=='1')
-        return(1);
-    if (param=='2')
-        return(2);
 
     return (0);	// just to keep the compilers mouth shut because of a warning
 }
+
 
 uint16_t MaverickSensor::shiftreg(uint16_t currentValue)
 {
@@ -375,6 +392,7 @@ uint16_t MaverickSensor::shiftreg(uint16_t currentValue)
 // Toggle pattern for feedback bits
 // Toggle, if MSB is 1
         currentValue ^= 0x1021;
+        //printf("XOR done");
     }
     return currentValue;
 }
@@ -386,10 +404,11 @@ uint16_t MaverickSensor::calculate_checksum(uint32_t data)
     uint16_t mask = 0x3331; //initial value of linear feedback shift register
     uint16_t csum = 0x0;
     int i = 0;
-    for(i = 23; i >= 0; i--)
-    {
-			printf("%x",(data >> i) & 0x01);
-		}
+//     for(i = 23; i >= 0; i--)
+//     {
+// 			printf("%x",(data >> i) & 0x01);
+// 		}
+    //printf("\n");
 
     for(i = 0; i < 24; ++i)
     {
@@ -398,8 +417,11 @@ uint16_t MaverickSensor::calculate_checksum(uint32_t data)
 //data bit at current position is "1"
 //do XOR with mask
             csum ^= mask;
+            //printf("mask done ");
         }
+        //printf("%x %x ",csum,mask);
         mask = shiftreg(mask);
+        //printf("\n");
     }
     return csum;
 }
